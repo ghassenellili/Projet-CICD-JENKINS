@@ -198,6 +198,8 @@ pipeline {
                 script {
                     if (isUnix()) {
                         sh """
+                            OLD_IDS=\$(docker ps -q --filter "publish=${STAGING_PORT}")
+                            if [ -n "\$OLD_IDS" ]; then docker rm -f \$OLD_IDS || true; fi
                             docker rm -f ${APP_NAME}-staging || true
                             docker run -d --name ${APP_NAME}-staging -p ${STAGING_PORT}:8080 ${IMAGE_TAG}
                             sleep 3
@@ -211,8 +213,14 @@ pipeline {
                         """
                     } else {
                         powershell """
-                            docker rm -f ${APP_NAME}-staging 2>\$null
+                            \$ErrorActionPreference = 'Continue'
+                            \$oldIds = docker ps -q --filter "publish=${STAGING_PORT}"
+                            if (\$oldIds) { docker rm -f \$oldIds 2>&1 | Out-Null }
+                            docker rm -f ${APP_NAME}-staging 2>&1 | Out-Null
+                            \$ErrorActionPreference = 'Stop'
+
                             docker run -d --name ${APP_NAME}-staging -p ${STAGING_PORT}:8080 ${IMAGE_TAG}
+                            if (\$LASTEXITCODE -ne 0) { throw "Failed to start staging container on port ${STAGING_PORT}" }
                             Start-Sleep -Seconds 3
 
                             \$health = (Invoke-WebRequest -Uri "http://localhost:${STAGING_PORT}/health" -UseBasicParsing).Content.Trim()
@@ -240,6 +248,8 @@ pipeline {
                 script {
                     if (isUnix()) {
                         sh """
+                            OLD_IDS=\$(docker ps -q --filter "publish=${PROD_PORT}")
+                            if [ -n "\$OLD_IDS" ]; then docker rm -f \$OLD_IDS || true; fi
                             docker rm -f ${APP_NAME}-production || true
                             docker run -d --name ${APP_NAME}-production -p ${PROD_PORT}:8080 ${IMAGE_TAG}
                             sleep 3
@@ -248,8 +258,14 @@ pipeline {
                         """
                     } else {
                         powershell """
-                            docker rm -f ${APP_NAME}-production 2>\$null
+                            \$ErrorActionPreference = 'Continue'
+                            \$oldIds = docker ps -q --filter "publish=${PROD_PORT}"
+                            if (\$oldIds) { docker rm -f \$oldIds 2>&1 | Out-Null }
+                            docker rm -f ${APP_NAME}-production 2>&1 | Out-Null
+                            \$ErrorActionPreference = 'Stop'
+
                             docker run -d --name ${APP_NAME}-production -p ${PROD_PORT}:8080 ${IMAGE_TAG}
+                            if (\$LASTEXITCODE -ne 0) { throw "Failed to start production container on port ${PROD_PORT}" }
                             Start-Sleep -Seconds 3
                             \$prodHealth = (Invoke-WebRequest -Uri "http://localhost:${PROD_PORT}/health" -UseBasicParsing).Content.Trim()
                             if (\$prodHealth -ne "OK") { throw "Production health check failed: \$prodHealth" }
