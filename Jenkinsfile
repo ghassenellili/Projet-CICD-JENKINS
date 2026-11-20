@@ -53,7 +53,7 @@ pipeline {
                     steps {
                         sh '''
                             . .venv/bin/activate
-                            pytest tests/test_unit.py --junitxml=build/test-results/unit-report.xml || true
+                            python -m pytest tests/test_unit.py --junitxml=build/test-results/unit-report.xml || true
                         '''
                     }
                 }
@@ -61,7 +61,7 @@ pipeline {
                     steps {
                         sh '''
                             . .venv/bin/activate
-                            pytest tests/test_http.py --junitxml=build/test-results/http-report.xml || true
+                            python -m pytest tests/test_http.py --junitxml=build/test-results/http-report.xml || true
                         '''
                     }
                 }

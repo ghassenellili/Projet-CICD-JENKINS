@@ -29,11 +29,11 @@ jobs:
 
       - name: Run Unit Tests (JUnit XML)
         run: |
-          pytest tests/test_unit.py --junitxml=build/test-results/unit-report.xml
+          python -m pytest tests/test_unit.py --junitxml=build/test-results/unit-report.xml
 
       - name: Run HTTP Integration Tests (JUnit XML)
         run: |
-          pytest tests/test_http.py --junitxml=build/test-results/http-report.xml
+          python -m pytest tests/test_http.py --junitxml=build/test-results/http-report.xml
 
       - name: Upload JUnit XML Test Reports (Artifact)
         if: always()
