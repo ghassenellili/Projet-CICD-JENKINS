@@ -51,6 +51,10 @@ Nous avons implémenté **3 fonctionnalités bonus** de la Section 5 :
    - *Problème résolu* : Un processus bloqué ou une étape `input` oubliée peut monopoliser un exécuteur Jenkins indéfiniment ; à l'inverse, un timeout réseau passager vers Docker Hub peut faire échouer tout un build valide. L'option globale `options { timeout(time: 15, unit: 'MINUTES') }` protège les ressources Jenkins, et `retry(3)` autour de `docker push` fiabilise la publication réseau.
 3. **Health Check complet (Bonus 3)** :
    - *Problème résolu* : Un conteneur Docker peut être à l'état `Up` (`running`) alors que le serveur web interne est planté ou bloqué. L'instruction `HEALTHCHECK` dans le `Dockerfile` interroge périodiquement `http://localhost:8080/health`, et notre smoke test de staging vérifie à la fois `/health` (`OK`) et un calcul métier réel sur `/slo/downtime`.
+4. **GitHub Actions CI Workflow (Bonus 4 — `.github/workflows/ci.yml`)** :
+   - *Comparaison Jenkinsfile vs GitHub Actions* :
+     - **Hébergement & Exécution** : GitHub Actions est *SaaS / cloud-managed* (`runs-on: ubuntu-latest`) et se déclenche nativement sur chaque `push` et `pull_request` sans serveur à maintenir, tandis que **Jenkins** est *self-hosted* (conteneur local ayant accès au socket Docker local pour déployer sur les ports `8081` et `8082`).
+     - **Syntaxe & Écosystème** : GitHub Actions utilise du **YAML** déclaratif avec des actions réutilisables (`actions/checkout@v4`, `actions/setup-python@v5`), alors que le `Jenkinsfile` utilise un DSL **Groovy** déclaratif permettant une orchestration fine des étapes `parallel`, `when`, `input` (approbation humaine) et `junit` (état jaune `UNSTABLE`).
 
 ---
 
