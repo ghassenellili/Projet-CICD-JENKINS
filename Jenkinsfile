@@ -170,15 +170,22 @@ pipeline {
                             if (isUnix()) {
                                 sh '''
                                     set -e
+                                    export DOCKER_CONFIG="${WORKSPACE}/.docker-cfg"
+                                    mkdir -p "$DOCKER_CONFIG"
                                     echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USER" --password-stdin
                                     docker push "${IMAGE_TAG}"
                                     docker logout
+                                    rm -rf "$DOCKER_CONFIG"
                                 '''
                             } else {
                                 bat '''
+                                    set DOCKER_CONFIG=%WORKSPACE%\\.docker-cfg
+                                    if not exist "%DOCKER_CONFIG%" mkdir "%DOCKER_CONFIG%"
+                                    echo {} > "%DOCKER_CONFIG%\\config.json"
                                     echo %DOCKER_TOKEN%| docker login -u "%DOCKER_USER%" --password-stdin || exit /b 1
                                     docker push "%IMAGE_TAG%" || exit /b 1
                                     docker logout
+                                    rmdir /s /q "%DOCKER_CONFIG%"
                                 '''
                             }
                         }
