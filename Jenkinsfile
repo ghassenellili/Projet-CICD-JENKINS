@@ -23,7 +23,7 @@ pipeline {
     environment {
         APP_NAME      = 'error-budget-calculator'
         APP_VERSION   = "1.0.${BUILD_NUMBER}"
-        DOCKER_REPO   = 'ghassenellili/error-budget-calculator'
+        DOCKER_REPO   = 'ghassenellili123/error-budget-calculator'
         IMAGE_TAG     = "${DOCKER_REPO}:${APP_VERSION}"
     }
 

@@ -12,7 +12,7 @@ Ce fichier explique comment lancer et tester l'application **SRE Error Budget Ca
 4. **Feature 4 — Test reports** : Publication des rapports XML avec `junit 'build/test-results/*.xml'`. Un test qui échoue passe le build en **JAUNE (`UNSTABLE`)**.
 5. **Feature 5 — Parameters** : `DEPLOY_ENV` (`staging` ou `production`) et `SLO_TARGET` (`99.9`).
 6. **Feature 6 — Artifacts** : Archivage du paquet de build et des rapports XML avec `fingerprint: true`.
-7. **Feature 7 — Docker image** : Construction de l'image uniquement si le build est **VERT (`SUCCESS`)**, avec le tag `ghassenellili/error-budget-calculator:1.0.${BUILD_NUMBER}` (jamais `latest`).
+7. **Feature 7 — Docker image** : Construction de l'image uniquement si le build est **VERT (`SUCCESS`)**, avec le tag `ghassenellili123/error-budget-calculator:1.0.${BUILD_NUMBER}` (jamais `latest`).
 8. **Feature 8 — Push to Docker Hub** : Authentification sécurisée via `withCredentials` (`dockerhub-token`) et push de l'image taguée sur Docker Hub (avec les bonus **Trivy Security Scan**, `timeout` et `retry(3)`).
 
 ---
@@ -29,8 +29,8 @@ python -m pytest tests/test_unit.py --junitxml=build/test-results/unit-report.xm
 python -m pytest tests/test_http.py --junitxml=build/test-results/http-report.xml
 
 # 3. Construire et lancer le conteneur Docker manuellement pour tester l'application
-docker build -t ghassenellili/error-budget-calculator:1.0.1 .
-docker run -d --name error-budget-test -p 8080:8080 ghassenellili/error-budget-calculator:1.0.1
+docker build -t ghassenellili123/error-budget-calculator:1.0.1 .
+docker run -d --name error-budget-test -p 8080:8080 ghassenellili123/error-budget-calculator:1.0.1
 ```
 
 ### Tester les routes HTTP de l'application (`http://localhost:8080`) :
@@ -65,10 +65,10 @@ docker rm -f error-budget-test
    - `Build`
    - `Tests` (`Unit tests` + `HTTP tests` en parallèle)
    - `Package` (vérifiez les fichiers archivés et leurs empreintes MD5 dans *Fingerprints*)
-   - `Docker image` (`ghassenellili/error-budget-calculator:1.0.N`)
+   - `Docker image` (`ghassenellili123/error-budget-calculator:1.0.N`)
    - `Security scan (Trivy)`
    - `Push`
-4. Ouvrez **Docker Hub** (`https://hub.docker.com/r/ghassenellili/error-budget-calculator/tags`) et vérifiez que le nouveau tag `1.0.N` est bien publié (sans tag `latest`).
+4. Ouvrez **Docker Hub** (`https://hub.docker.com/r/ghassenellili123/error-budget-calculator/tags`) et vérifiez que le nouveau tag `1.0.N` est bien publié (sans tag `latest`).
 
 ### Scénario B : Test cassé $\rightarrow$ Build Jaune (`UNSTABLE`) sans création d'image Docker
 

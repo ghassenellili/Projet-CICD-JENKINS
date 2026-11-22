@@ -4,7 +4,7 @@
 - **Établissement** : Horizon School of Digital Technologies
 - **Binôme** : Étudiant 1 (Ghassen) & Étudiant 2 (Binôme)
 - **Dépôt GitHub** : `https://github.com/ghassenellili/Projet-CICD-JENKINS`
-- **Dépôt Docker Hub** : `https://hub.docker.com/r/ghassenellili/error-budget-calculator`
+- **Dépôt Docker Hub** : `https://hub.docker.com/r/ghassenellili123/error-budget-calculator`
 
 ---
 
@@ -32,7 +32,7 @@ Notre application expose :
 | **1. Build** | Crée un environnement virtuel isolé (`.venv`), installe les dépendances depuis `requirements.txt` et prépare l'archive de distribution `build/dist/*.tar.gz`. | Garantit que l'application et ses dépendances s'installent proprement avant de lancer les tests. |
 | **2. Tests (Parallel : `Unit tests` & `HTTP tests`)** | Exécute simultanément **7 tests unitaires** (`tests/test_unit.py`) et **5 tests HTTP** (`tests/test_http.py`) avec `pytest --junitxml=...`, puis publie les rapports via `junit`. | Le parallélisme réduit le temps de feedback CI. La publication JUnit passe le build en **jaune (`UNSTABLE`)** si un test échoue, empêchant la création d'une image défectueuse. |
 | **3. Package (Artifacts)** | Archive le paquet de build et les rapports XML JUnit avec `archiveArtifacts(..., fingerprint: true)`. | Assure la traçabilité complète (empreinte MD5/fingerprint) entre un numéro de build Jenkins et les fichiers produits. |
-| **4. Docker image** | Construit l'image Docker taguée `ghassenellili/error-budget-calculator:1.0.${BUILD_NUMBER}` uniquement si `currentBuild.currentResult == 'SUCCESS'`. | Garantit qu'aucune image n'est construite si un test est en échec (build jaune) et interdit l'usage du tag ambigu `latest`. |
+| **4. Docker image** | Construit l'image Docker taguée `ghassenellili123/error-budget-calculator:1.0.${BUILD_NUMBER}` uniquement si `currentBuild.currentResult == 'SUCCESS'`. | Garantit qu'aucune image n'est construite si un test est en échec (build jaune) et interdit l'usage du tag ambigu `latest`. |
 | **5. Security scan (Trivy)** *(Bonus)* | Analyse l'image Docker locale avec **Aqua Trivy** (`--exit-code 1 --severity CRITICAL`) en utilisant le volume de cache `trivy-cache`. | Bloque immédiatement le pipeline avant le push sur Docker Hub si une vulnérabilité critique (CVE) est présente dans l'image. |
 | **6. Push** | Authentifie Jenkins auprès de Docker Hub via `withCredentials` (token Read & Write) et pousse l'image dans un bloc `retry(3)`. | Publie l'artefact immuable dans un registre distant tout en tolérant les micro-coupures réseau grâce aux 3 tentatives automatiques. |
 | **7. Staging :8081** | Déploie le conteneur sur le port `8081`, vérifie que `GET /health` répond `OK`, puis exécute un smoke test sur `/slo/downtime?slo=99.9&days=30` en vérifiant la réponse exacte (`43.2`). | Valide que le conteneur réel démarre et répond correctement aux requêtes HTTP avant de solliciter une validation humaine. |
