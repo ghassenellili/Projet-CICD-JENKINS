@@ -169,14 +169,15 @@ pipeline {
                         script {
                             if (isUnix()) {
                                 sh '''
+                                    set -e
                                     echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USER" --password-stdin
                                     docker push "${IMAGE_TAG}"
                                     docker logout
                                 '''
                             } else {
                                 bat '''
-                                    echo %DOCKER_TOKEN%| docker login -u "%DOCKER_USER%" --password-stdin
-                                    docker push "%IMAGE_TAG%"
+                                    echo %DOCKER_TOKEN%| docker login -u "%DOCKER_USER%" --password-stdin || exit /b 1
+                                    docker push "%IMAGE_TAG%" || exit /b 1
                                     docker logout
                                 '''
                             }
