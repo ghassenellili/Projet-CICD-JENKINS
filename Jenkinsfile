@@ -23,7 +23,7 @@ pipeline {
     environment {
         APP_NAME      = 'error-budget-calculator'
         APP_VERSION   = "1.0.${BUILD_NUMBER}"
-        DOCKER_REPO   = 'ghassenellili/error-budget-calculator'
+        DOCKER_REPO   = 'ghassenellili123/error-budget-calculator'
         IMAGE_TAG     = "${DOCKER_REPO}:${APP_VERSION}"
     }
 
@@ -120,9 +120,12 @@ pipeline {
             steps {
                 script {
                     if (isUnix()) {
-                        sh "docker build -t ${IMAGE_TAG} ."
+                        sh "DOCKER_BUILDKIT=0 docker build --pull=false -t ${IMAGE_TAG} ."
                     } else {
-                        bat "docker build -t ${IMAGE_TAG} ."
+                        bat """
+                            set DOCKER_BUILDKIT=0
+                            docker build --pull=false -t ${IMAGE_TAG} .
+                        """
                     }
                 }
             }
@@ -169,15 +172,33 @@ pipeline {
                         script {
                             if (isUnix()) {
                                 sh '''
+                                    set -e
+                                    export DOCKER_CONFIG="${WORKSPACE}/.docker-cfg"
+                                    mkdir -p "$DOCKER_CONFIG"
                                     echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USER" --password-stdin
                                     docker push "${IMAGE_TAG}"
                                     docker logout
+                                    rm -rf "$DOCKER_CONFIG"
                                 '''
                             } else {
-                                bat '''
-                                    echo %DOCKER_TOKEN%| docker login -u "%DOCKER_USER%" --password-stdin
-                                    docker push "%IMAGE_TAG%"
-                                    docker logout
+                                powershell '''
+                                    $ErrorActionPreference = 'Continue'
+                                    $cfgDir = Join-Path $env:WORKSPACE ".docker-cfg"
+                                    New-Item -ItemType Directory -Force -Path $cfgDir | Out-Null
+                                    Set-Content -Path (Join-Path $cfgDir "config.json") -Value "{}" -Encoding Ascii
+
+                                    $user = $env:DOCKER_USER.Trim()
+                                    $token = $env:DOCKER_TOKEN.Trim()
+                                    Write-Host "Logging into Docker Hub as user '$user' (token length: $($token.Length))..."
+
+                                    docker --config "$cfgDir" login -u "$user" -p "$token" 2>&1 | ForEach-Object { Write-Host $_ }
+                                    if ($LASTEXITCODE -ne 0) { throw "Docker login failed for user '$user' (exit code $LASTEXITCODE)" }
+
+                                    docker --config "$cfgDir" push $env:IMAGE_TAG 2>&1 | ForEach-Object { Write-Host $_ }
+                                    if ($LASTEXITCODE -ne 0) { throw "Docker push failed (exit code $LASTEXITCODE)" }
+
+                                    docker --config "$cfgDir" logout 2>&1 | Out-Null
+                                    Remove-Item -Recurse -Force $cfgDir -ErrorAction SilentlyContinue
                                 '''
                             }
                         }
