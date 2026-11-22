@@ -178,14 +178,20 @@ pipeline {
                                     rm -rf "$DOCKER_CONFIG"
                                 '''
                             } else {
-                                bat '''
-                                    set DOCKER_CONFIG=%WORKSPACE%\\.docker-cfg
-                                    if not exist "%DOCKER_CONFIG%" mkdir "%DOCKER_CONFIG%"
-                                    echo {} > "%DOCKER_CONFIG%\\config.json"
-                                    echo %DOCKER_TOKEN%| docker login -u "%DOCKER_USER%" --password-stdin || exit /b 1
-                                    docker push "%IMAGE_TAG%" || exit /b 1
-                                    docker logout
-                                    rmdir /s /q "%DOCKER_CONFIG%"
+                                powershell '''
+                                    $ErrorActionPreference = 'Stop'
+                                    $cfgDir = Join-Path $env:WORKSPACE ".docker-cfg"
+                                    New-Item -ItemType Directory -Force -Path $cfgDir | Out-Null
+                                    Set-Content -Path (Join-Path $cfgDir "config.json") -Value "{}" -Encoding Ascii
+
+                                    $env:DOCKER_TOKEN.Trim() | docker --config "$cfgDir" login -u $env:DOCKER_USER.Trim() --password-stdin
+                                    if ($LASTEXITCODE -ne 0) { throw "Docker login failed (exit code $LASTEXITCODE)" }
+
+                                    docker --config "$cfgDir" push $env:IMAGE_TAG
+                                    if ($LASTEXITCODE -ne 0) { throw "Docker push failed (exit code $LASTEXITCODE)" }
+
+                                    docker --config "$cfgDir" logout
+                                    Remove-Item -Recurse -Force $cfgDir -ErrorAction SilentlyContinue
                                 '''
                             }
                         }
