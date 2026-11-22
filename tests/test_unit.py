@@ -16,7 +16,7 @@ def test_allowed_downtime_30_days_99_9():
     assert result["slo_target"] == 99.9
     assert result["window_days"] == 30
     assert result["total_window_minutes"] == 43200
-    assert result["allowed_downtime_minutes"] == 999.9
+    assert result["allowed_downtime_minutes"] == 43.2
     assert result["allowed_downtime_seconds"] == 2592.0
 
 
