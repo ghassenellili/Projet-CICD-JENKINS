@@ -6,17 +6,17 @@ pipeline {
         timeout(time: 15, unit: 'MINUTES')
     }
 
-    // Feature 5: Parameters (DEPLOY_ENV + a second parameter of choice)
+    // Feature 5: Parameters (DEPLOY_ENV + one more parameter of your choice)
     parameters {
         choice(
             name: 'DEPLOY_ENV',
             choices: ['staging', 'production'],
-            description: 'Target deployment environment (staging on 8081, or staging + production on 8082)'
+            description: 'Target deployment environment'
         )
         string(
             name: 'SLO_TARGET',
             defaultValue: '99.9',
-            description: 'Default SLO target percentage tested during the staging smoke test'
+            description: 'Default SLO target percentage'
         )
     }
 
@@ -25,9 +25,6 @@ pipeline {
         APP_VERSION   = "1.0.${BUILD_NUMBER}"
         DOCKER_REPO   = 'ghassenellili/error-budget-calculator'
         IMAGE_TAG     = "${DOCKER_REPO}:${APP_VERSION}"
-        STAGING_PORT  = '8081'
-        PROD_PORT     = '8082'
-        NOTIFY_EMAIL  = 'team-sre@horizon.local'
     }
 
     stages {
@@ -187,114 +184,6 @@ pipeline {
                     }
                 }
             }
-        }
-
-        // Feature 9 + Bonus 3: Staging (:8081) + smoke test (/health and /slo/downtime exact response check)
-        stage('Staging :8081') {
-            when {
-                expression { currentBuild.currentResult == 'SUCCESS' }
-            }
-            steps {
-                script {
-                    if (isUnix()) {
-                        sh """
-                            OLD_IDS=\$(docker ps -q --filter "publish=${STAGING_PORT}")
-                            if [ -n "\$OLD_IDS" ]; then docker rm -f \$OLD_IDS || true; fi
-                            docker rm -f ${APP_NAME}-staging || true
-                            docker run -d --name ${APP_NAME}-staging -p ${STAGING_PORT}:8080 ${IMAGE_TAG}
-                            sleep 3
-
-                            HEALTH_OUT=\$(curl -fsS http://localhost:${STAGING_PORT}/health)
-                            test "\$HEALTH_OUT" = "OK"
-
-                            SMOKE_OUT=\$(curl -fsS "http://localhost:${STAGING_PORT}/slo/downtime?slo=${params.SLO_TARGET}&days=30")
-                            echo "Smoke test output: \$SMOKE_OUT"
-                            echo "\$SMOKE_OUT" | grep -q '"allowed_downtime_minutes":43.2'
-                        """
-                    } else {
-                        powershell """
-                            \$ErrorActionPreference = 'Continue'
-                            \$oldIds = docker ps -q --filter "publish=${STAGING_PORT}"
-                            if (\$oldIds) { docker rm -f \$oldIds 2>&1 | Out-Null }
-                            docker rm -f ${APP_NAME}-staging 2>&1 | Out-Null
-                            \$ErrorActionPreference = 'Stop'
-
-                            docker run -d --name ${APP_NAME}-staging -p ${STAGING_PORT}:8080 ${IMAGE_TAG}
-                            if (\$LASTEXITCODE -ne 0) { throw "Failed to start staging container on port ${STAGING_PORT}" }
-                            Start-Sleep -Seconds 3
-
-                            \$health = (Invoke-WebRequest -Uri "http://localhost:${STAGING_PORT}/health" -UseBasicParsing).Content.Trim()
-                            if (\$health -ne "OK") { throw "Health check failed: \$health" }
-
-                            \$smoke = Invoke-RestMethod -Uri "http://localhost:${STAGING_PORT}/slo/downtime?slo=${params.SLO_TARGET}&days=30"
-                            Write-Host "Smoke test output: \$(\$smoke | ConvertTo-Json -Compress)"
-                            if (\$smoke.allowed_downtime_minutes -ne 43.2) { throw "Smoke test calculation mismatch!" }
-                        """
-                    }
-                }
-            }
-        }
-
-        // Feature 10: Production with approval (input step, then same image on port 8082, only if DEPLOY_ENV = production)
-        stage('Production :8082') {
-            when {
-                allOf {
-                    expression { currentBuild.currentResult == 'SUCCESS' }
-                    expression { params.DEPLOY_ENV == 'production' }
-                }
-            }
-            steps {
-                input message: "Approve deployment of ${IMAGE_TAG} to Production (:8082)?", ok: 'Deploy to Production'
-                script {
-                    if (isUnix()) {
-                        sh """
-                            OLD_IDS=\$(docker ps -q --filter "publish=${PROD_PORT}")
-                            if [ -n "\$OLD_IDS" ]; then docker rm -f \$OLD_IDS || true; fi
-                            docker rm -f ${APP_NAME}-production || true
-                            docker run -d --name ${APP_NAME}-production -p ${PROD_PORT}:8080 ${IMAGE_TAG}
-                            sleep 3
-                            PROD_HEALTH=\$(curl -fsS http://localhost:${PROD_PORT}/health)
-                            test "\$PROD_HEALTH" = "OK"
-                        """
-                    } else {
-                        powershell """
-                            \$ErrorActionPreference = 'Continue'
-                            \$oldIds = docker ps -q --filter "publish=${PROD_PORT}"
-                            if (\$oldIds) { docker rm -f \$oldIds 2>&1 | Out-Null }
-                            docker rm -f ${APP_NAME}-production 2>&1 | Out-Null
-                            \$ErrorActionPreference = 'Stop'
-
-                            docker run -d --name ${APP_NAME}-production -p ${PROD_PORT}:8080 ${IMAGE_TAG}
-                            if (\$LASTEXITCODE -ne 0) { throw "Failed to start production container on port ${PROD_PORT}" }
-                            Start-Sleep -Seconds 3
-                            \$prodHealth = (Invoke-WebRequest -Uri "http://localhost:${PROD_PORT}/health" -UseBasicParsing).Content.Trim()
-                            if (\$prodHealth -ne "OK") { throw "Production health check failed: \$prodHealth" }
-                        """
-                    }
-                }
-            }
-        }
-    }
-
-    // Feature 11 & 12: Email notification (Mailpit) with version in subject + cleanWs() in post { always }
-    post {
-        success {
-            mail to: "${NOTIFY_EMAIL}",
-                 subject: "[SUCCESS] ${APP_NAME} v${APP_VERSION} - Pipeline #${BUILD_NUMBER}",
-                 body: "Build #${BUILD_NUMBER} (version ${APP_VERSION}) succeeded.\nEnvironment: ${params.DEPLOY_ENV}\nImage: ${IMAGE_TAG}\nDetails: ${BUILD_URL}"
-        }
-        unstable {
-            mail to: "${NOTIFY_EMAIL}",
-                 subject: "[UNSTABLE] ${APP_NAME} v${APP_VERSION} - Tests Failed (#${BUILD_NUMBER})",
-                 body: "Build #${BUILD_NUMBER} (version ${APP_VERSION}) is UNSTABLE (yellow) due to test failures. Docker build and deployment were skipped.\nDetails: ${BUILD_URL}"
-        }
-        failure {
-            mail to: "${NOTIFY_EMAIL}",
-                 subject: "[FAILURE] ${APP_NAME} v${APP_VERSION} - Pipeline #${BUILD_NUMBER}",
-                 body: "Build #${BUILD_NUMBER} (version ${APP_VERSION}) failed.\nEnvironment: ${params.DEPLOY_ENV}\nDetails: ${BUILD_URL}"
-        }
-        always {
-            cleanWs()
         }
     }
 }
