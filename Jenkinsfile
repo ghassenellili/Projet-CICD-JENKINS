@@ -182,18 +182,22 @@ pipeline {
                                 '''
                             } else {
                                 powershell '''
-                                    $ErrorActionPreference = 'Stop'
+                                    $ErrorActionPreference = 'Continue'
                                     $cfgDir = Join-Path $env:WORKSPACE ".docker-cfg"
                                     New-Item -ItemType Directory -Force -Path $cfgDir | Out-Null
                                     Set-Content -Path (Join-Path $cfgDir "config.json") -Value "{}" -Encoding Ascii
 
-                                    $env:DOCKER_TOKEN.Trim() | docker --config "$cfgDir" login -u $env:DOCKER_USER.Trim() --password-stdin
-                                    if ($LASTEXITCODE -ne 0) { throw "Docker login failed (exit code $LASTEXITCODE)" }
+                                    $user = $env:DOCKER_USER.Trim()
+                                    $token = $env:DOCKER_TOKEN.Trim()
+                                    Write-Host "Logging into Docker Hub as user '$user' (token length: $($token.Length))..."
 
-                                    docker --config "$cfgDir" push $env:IMAGE_TAG
+                                    docker --config "$cfgDir" login -u "$user" -p "$token" 2>&1 | ForEach-Object { Write-Host $_ }
+                                    if ($LASTEXITCODE -ne 0) { throw "Docker login failed for user '$user' (exit code $LASTEXITCODE)" }
+
+                                    docker --config "$cfgDir" push $env:IMAGE_TAG 2>&1 | ForEach-Object { Write-Host $_ }
                                     if ($LASTEXITCODE -ne 0) { throw "Docker push failed (exit code $LASTEXITCODE)" }
 
-                                    docker --config "$cfgDir" logout
+                                    docker --config "$cfgDir" logout 2>&1 | Out-Null
                                     Remove-Item -Recurse -Force $cfgDir -ErrorAction SilentlyContinue
                                 '''
                             }
