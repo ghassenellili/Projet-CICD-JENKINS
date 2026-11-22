@@ -120,9 +120,12 @@ pipeline {
             steps {
                 script {
                     if (isUnix()) {
-                        sh "docker build -t ${IMAGE_TAG} ."
+                        sh "DOCKER_BUILDKIT=0 docker build --pull=false -t ${IMAGE_TAG} ."
                     } else {
-                        bat "docker build -t ${IMAGE_TAG} ."
+                        bat """
+                            set DOCKER_BUILDKIT=0
+                            docker build --pull=false -t ${IMAGE_TAG} .
+                        """
                     }
                 }
             }
