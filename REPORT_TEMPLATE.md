@@ -136,6 +136,9 @@ Chaque stage contient une branche Linux (`sh`) et une branche Windows (`bat` / `
 #### C. E-mail de succès reçu dans Mailpit
 ![E-mail Mailpit](screenshots/06-mailpit-email.png)
 
+#### C bis. E-mail d'échec avec le log joint (`build.log`)
+![E-mail d'échec Mailpit](screenshots/06-mailpit-failure-email.png)
+
 #### D. Job de rollback
 ![Rollback : Stage View](screenshots/07-rollback-stageview.png)
 
@@ -143,5 +146,5 @@ Chaque stage contient une branche Linux (`sh`) et une branche Windows (`bat` / `
 
 ### 6.5 Ce qui a été vérifié et ce qui ne l'a pas été
 
-- **Vérifié sur Jenkins** : le déploiement staging et production (avec approbation), l'e-mail de succès (staging et production), le message de nettoyage `cleanWs()` dans la console, le test HTTP supplémentaire et le job de rollback.
-- **Configuré mais non testé en conditions réelles** : les e-mails d'**échec** et d'**instabilité** (log joint) et les branches **Windows** (`bat` / `powershell`) de nos stages.
+- **Vérifié sur Jenkins** : le déploiement staging et production (avec approbation), l'e-mail de succès (staging et production), l'e-mail d'**échec** (build n°12, avec le log `build.log` en pièce jointe), le message de nettoyage `cleanWs()` dans la console, le test HTTP supplémentaire et le job de rollback.
+- **Configuré mais non testé en conditions réelles** : l'e-mail d'**instabilité** (`UNSTABLE`, log joint) et les branches **Windows** (`bat` / `powershell`) de nos stages.
