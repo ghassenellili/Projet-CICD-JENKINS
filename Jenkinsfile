@@ -6,6 +6,11 @@ pipeline {
         timeout(time: 15, unit: 'MINUTES')
     }
 
+    // Bonus: poll GitHub every ~5 minutes and build when a new commit is found
+    triggers {
+        pollSCM('H/5 * * * *')
+    }
+
     // Feature 5: Parameters (DEPLOY_ENV + one more parameter of your choice)
     parameters {
         choice(
