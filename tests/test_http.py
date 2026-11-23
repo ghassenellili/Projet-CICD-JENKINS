@@ -63,6 +63,20 @@ def test_post_release_check_go_and_nogo(client):
     assert nogo_resp.get_json()["decision"] == "NO-GO"
 
 
+def test_post_release_check_blocks_when_budget_exceeded(client):
+    """POST /slo/release-check returns NO-GO when failures exceed the error budget."""
+    payload = {
+        "slo_target": 99.9,
+        "total_requests": 100000,
+        "failed_requests": 150,
+    }
+    response = client.post("/slo/release-check", json=payload)
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["decision"] == "NO-GO"
+    assert data["can_deploy"] is False
+
+
 def test_invalid_http_request_returns_400(client):
     """Invalid SLO payload over HTTP returns HTTP 400 Bad Request."""
     response = client.post(
