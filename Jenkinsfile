@@ -207,5 +207,79 @@ pipeline {
                 }
             }
         }
+
+        // Feature 9: Deploy to staging (runs the image built above, never rebuilds; smoke test fails the stage on a wrong answer)
+        stage('Deploy to staging') {
+            when {
+                expression { currentBuild.currentResult == 'SUCCESS' }
+            }
+            steps {
+                script {
+                    if (isUnix()) {
+                        // Jenkins runs in a container: the host is reached through host.docker.internal
+                        sh '''
+                            set -e
+                            STAGING_URL="http://host.docker.internal:8081"
+
+                            docker rm -f ebc-staging || true
+                            docker run -d --name ebc-staging -p 8081:8080 "$IMAGE_TAG"
+
+                            # Wait up to 20 s until /health answers exactly OK
+                            READY=0
+                            for i in $(seq 1 20); do
+                                if [ "$(curl -fs "$STAGING_URL/health" || true)" = "OK" ]; then
+                                    READY=1
+                                    break
+                                fi
+                                sleep 1
+                            done
+                            if [ "$READY" != "1" ]; then
+                                echo "Staging did not answer OK on /health within 20 s"
+                                docker logs ebc-staging
+                                exit 1
+                            fi
+
+                            # Smoke test: any wrong answer fails the stage
+                            curl -fs "$STAGING_URL/health" | grep -x OK
+                            curl -fs "$STAGING_URL/slo/downtime?slo=99.9&days=30" | grep -F '"allowed_downtime_minutes":43.2'
+
+                            echo "Staging OK: ${STAGING_URL} (version ${APP_VERSION})"
+                        '''
+                    } else {
+                        // Windows branch: untested. Jenkins runs on the host, so localhost is used
+                        bat """
+                            docker rm -f ebc-staging
+                            exit /b 0
+                        """
+                        bat """
+                            docker run -d --name ebc-staging -p 8081:8080 ${IMAGE_TAG}
+                        """
+                        powershell '''
+                            $ErrorActionPreference = 'Stop'
+                            $url = "http://localhost:8081"
+
+                            # Wait up to 20 s until /health answers exactly OK
+                            $ready = $false
+                            for ($i = 0; $i -lt 20; $i++) {
+                                try {
+                                    $r = Invoke-WebRequest -UseBasicParsing -Uri "$url/health"
+                                    if ($r.Content.Trim() -ceq 'OK') { $ready = $true; break }
+                                } catch { }
+                                Start-Sleep -Seconds 1
+                            }
+                            if (-not $ready) { throw "Staging did not answer OK on /health within 20 s" }
+
+                            # Smoke test: any wrong answer fails the stage
+                            $health = (Invoke-WebRequest -UseBasicParsing -Uri "$url/health").Content.Trim()
+                            if ($health -cne 'OK') { throw "/health returned '$health' instead of 'OK'" }
+                            $slo = (Invoke-WebRequest -UseBasicParsing -Uri "$url/slo/downtime?slo=99.9&days=30").Content
+                            if (-not $slo.Contains('"allowed_downtime_minutes":43.2')) { throw "/slo/downtime returned an unexpected answer: $slo" }
+
+                            Write-Host "Staging OK: $url (version $env:APP_VERSION)"
+                        '''
+                    }
+                }
+            }
+        }
     }
 }
