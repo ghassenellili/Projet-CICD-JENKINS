@@ -158,7 +158,7 @@ pipeline {
         }
 
         // Feature 8 + Bonus 2: Push to Docker Hub (withCredentials + Read & Write token + retry(3))
-        // Compatible with both collaborators on ghassenellili123/error-budget-calculator (ghassenellili123 & mohamedaminezalila)
+        // Compatible with both collaborators on ghassenellili123/error-budget-calculator (ghassenellili123 & aminezalila)
         stage('Push') {
             when {
                 expression { currentBuild.currentResult == 'SUCCESS' }

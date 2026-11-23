@@ -1,7 +1,7 @@
-# Guide Complet pour Mohamed Amine Zalila (`mohamedaminezalila`) — Lancer la CI & Ajouter la Partie CD (Features 9 à 12)
+# Guide Complet pour Mohamed Amine Zalila (`aminezalila`) — Lancer la CI & Ajouter la Partie CD (Features 9 à 12)
 
 Bienvenue **Mohamed Amine** ! Ce guide explique étape par étape comment :
-1. Faire tourner toute la partie **CI (Features 1 à 8)** déjà prête sur ton PC avec ton compte collaborateur Docker Hub **`mohamedaminezalila`**.
+1. Faire tourner toute la partie **CI (Features 1 à 8)** déjà prête sur ton PC avec ton compte collaborateur Docker Hub **`aminezalila`**.
 2. Créer ta branche **`amine/cd-pipeline`** pour ajouter ta partie **Continuous Delivery (Features 9 à 12 : Staging `:8081`, Production `:8082` avec approbation, Email Mailpit et `cleanWs()`)** et finaliser le projet CI/CD !
 
 ---
@@ -15,7 +15,7 @@ git clone https://github.com/ghassenellili/Projet-CICD-JENKINS.git
 cd Projet-CICD-JENKINS
 
 # Configurer ton nom et ton email GitHub personnel
-git config user.name "mohamedaminezalila"
+git config user.name "aminezalila"
 git config user.email "TON_EMAIL_GITHUB@horizon-university.tn"
 
 # Créer ta branche nominative (Section 2 : jamais de commit direct sur main)
@@ -24,23 +24,23 @@ git checkout -b amine/cd-pipeline
 
 ---
 
-## Étape 2 : Configurer ton Token Docker Hub (`mohamedaminezalila`) dans ton Jenkins
+## Étape 2 : Configurer ton Token Docker Hub (`aminezalila`) dans ton Jenkins
 
-Comme **Ghassen (`ghassenellili123`)** t'a ajouté comme **Collaborator** sur le dépôt Docker Hub `ghassenellili123/error-budget-calculator`, tu peux pousser directement sur ce dépôt avec ton propre compte Docker Hub **`mohamedaminezalila`** !
+Comme **Ghassen (`ghassenellili123`)** t'a ajouté comme **Collaborator** sur le dépôt Docker Hub `ghassenellili123/error-budget-calculator`, tu peux pousser directement sur ce dépôt avec ton propre compte Docker Hub **`aminezalila`** !
 
-1. Connecte-toi sur [Docker Hub](https://app.docker.com/settings/personal-access-tokens) avec ton compte **`mohamedaminezalila`** (et accepte l'invitation de collaborateur sur `ghassenellili123/error-budget-calculator` si demandé).
+1. Connecte-toi sur [Docker Hub](https://app.docker.com/settings/personal-access-tokens) avec ton compte **`aminezalila`** (et accepte l'invitation de collaborateur sur `ghassenellili123/error-budget-calculator` si demandé).
 2. Clique sur **Generate new token** :
    - **Description** : `jenkins-amine`
    - **Access permissions** : **`Read, Write, Delete`** (ou **`Read & Write`**)
    - Copie le token généré (`dckr_pat_...`).
 3. Dans ton **Jenkins** (`Manage Jenkins` $\rightarrow$ `Credentials` $\rightarrow$ `System` $\rightarrow$ `Global credentials` $\rightarrow$ `Add Credentials`) :
    - **Kind** : `Username with password`
-   - **Username** : `mohamedaminezalila`
+   - **Username** : `aminezalila`
    - **Password** : colle ton token `dckr_pat_...`
    - **ID** : `dockerhub-token` *(exactement cet ID)*
    - Clique sur **Create**.
 
-*(Grâce à `withCredentials` dans le `Jenkinsfile`, Jenkins se connectera en tant que `mohamedaminezalila` et poussera l'image `ghassenellili123/error-budget-calculator:1.0.${BUILD_NUMBER}` !)*
+*(Grâce à `withCredentials` dans le `Jenkinsfile`, Jenkins se connectera en tant que `aminezalila` et poussera l'image `ghassenellili123/error-budget-calculator:1.0.${BUILD_NUMBER}` !)*
 
 ---
 
