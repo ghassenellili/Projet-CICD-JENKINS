@@ -357,4 +357,40 @@ pipeline {
             }
         }
     }
+
+    // Feature 11: email notifications (Mailpit) / Feature 12: workspace cleanup
+    post {
+        success {
+            script {
+                def deployedUrls = "Staging: http://localhost:8081"
+                if (params.DEPLOY_ENV == 'production') {
+                    deployedUrls += "\nProduction: http://localhost:8082"
+                }
+                emailext(
+                    to: 'team@lab.local',
+                    subject: "${APP_NAME} ${APP_VERSION} deployed (${params.DEPLOY_ENV})",
+                    body: "Build: ${env.BUILD_URL}\nImage: ${IMAGE_TAG}\n${deployedUrls}"
+                )
+            }
+        }
+        unstable {
+            emailext(
+                to: 'team@lab.local',
+                subject: "UNSTABLE: ${APP_NAME} ${APP_VERSION}",
+                body: "Tests failed: ${env.BUILD_URL}testReport/",
+                attachLog: true
+            )
+        }
+        failure {
+            emailext(
+                to: 'team@lab.local',
+                subject: "FAILURE: ${APP_NAME} ${APP_VERSION}",
+                body: "Build broken: ${env.BUILD_URL}console",
+                attachLog: true
+            )
+        }
+        always {
+            cleanWs()
+        }
+    }
 }
