@@ -2,9 +2,9 @@
 ## Application : SRE Error Budget Calculator
 
 - **Établissement** : Horizon School of Digital Technologies
-- **Binôme** : Ghassen Ellili (CI — Features 1 à 8) & Binôme (CD — Features 9 à 12)
+- **Binôme** : Ghassen Ellili (CI — Features 1 à 8) & Mohamed Amine Zalila (CD — Features 9 à 12)
 - **Dépôt GitHub** : `https://github.com/ghassenellili/Projet-CICD-JENKINS`
-- **Dépôt Docker Hub** : `https://hub.docker.com/r/ghassenellili123/error-budget-calculator`
+- **Dépôt Docker Hub** : `https://hub.docker.com/r/ghassenellili123/error-budget-calculator` (Collaborateurs : `ghassenellili123` & `mohamedaminezalila`)
 
 ---
 

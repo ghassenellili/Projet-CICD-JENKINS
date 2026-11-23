@@ -158,6 +158,7 @@ pipeline {
         }
 
         // Feature 8 + Bonus 2: Push to Docker Hub (withCredentials + Read & Write token + retry(3))
+        // Compatible with both collaborators on ghassenellili123/error-budget-calculator (ghassenellili123 & mohamedaminezalila)
         stage('Push') {
             when {
                 expression { currentBuild.currentResult == 'SUCCESS' }
@@ -189,7 +190,7 @@ pipeline {
 
                                     $user = $env:DOCKER_USER.Trim()
                                     $token = $env:DOCKER_TOKEN.Trim()
-                                    Write-Host "Logging into Docker Hub as user '$user' (token length: $($token.Length))..."
+                                    Write-Host "Logging into Docker Hub as collaborator '$user' to push $env:IMAGE_TAG..."
 
                                     docker --config "$cfgDir" login -u "$user" -p "$token" 2>&1 | ForEach-Object { Write-Host $_ }
                                     if ($LASTEXITCODE -ne 0) { throw "Docker login failed for user '$user' (exit code $LASTEXITCODE)" }
