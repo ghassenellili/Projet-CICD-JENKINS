@@ -81,3 +81,67 @@ Nous avons implémenté **4 fonctionnalités bonus** de la Section 5 :
 
 ### B. Dépôt Docker Hub `ghassenellili123/error-budget-calculator` mis à jour après le stage `Push`
 ![Docker Hub Repository](screenshots/03-dockerhub-tags.png)
+
+---
+
+## 6. Partie Continuous Delivery (Mohamed Amine Zalila)
+
+Cette partie prolonge le pipeline CI de Ghassen. Elle a été développée sur des branches `amine/...` (`amine/cd-staging`, `amine/cd-production`, `amine/cd-notify-cleanup`, `amine/http-test-release-check`, `amine/bonus-rollback`, `amine/bonus-poll-trigger`, `amine/docs-cd`), chacune fusionnée sur `main` par une Pull Request relue par Ghassen. Principe commun : l'image construite et poussée par la CI est **réutilisée telle quelle** (jamais reconstruite) pour être déployée.
+
+### 6.1 Les stages de livraison (features 9 à 12) et pourquoi ils existent
+
+| Stage | Ce qu'il fait | Pourquoi |
+| :--- | :--- | :--- |
+| **9. `Deploy to staging`** | Supprime l'ancien conteneur `ebc-staging`, lance l'image `${IMAGE_TAG}` sur le port `8081`, attend jusqu'à 20 s que `/health` réponde exactement `OK`, puis exécute un smoke test (`/health` = `OK` et `/slo/downtime?slo=99.9&days=30` contient `"allowed_downtime_minutes":43.2`). Une réponse incorrecte fait échouer le stage. | Prouver que l'image réellement publiée démarre et répond correctement dans un conteneur, avant toute mise en production. |
+| **10. `Deploy to production`** | Seulement si `DEPLOY_ENV == 'production'` et build `SUCCESS` : approbation manuelle (`input`, bouton **Deploy**), puis **la même image** dans `ebc-prod` sur le port `8082`, avec vérification de `/health`. | Garder un contrôle humain avant la production, et garantir que ce qui tourne en production est exactement ce qui a été validé en staging. |
+| **11. Notifications e-mail** | Bloc `post` : `emailext` vers `team@lab.local` (Mailpit) en cas de succès (version, URL du build, URLs déployées), d'instabilité (lien vers le rapport de tests, log joint) ou d'échec (lien vers la console, log joint). | L'équipe est prévenue de chaque résultat avec les bons liens, sans surveiller Jenkins. |
+| **12. Nettoyage** | `cleanWs()` dans `post { always { ... } }`. | Éviter que les espaces de travail (`.venv`, `build/`) saturent le disque de Jenkins. |
+
+Chaque stage contient une branche Linux (`sh`) et une branche Windows (`bat` / `powershell`). Mon Jenkins est un conteneur Linux, qui joint l'hôte via `http://host.docker.internal` ; la branche Windows (`http://localhost`) n'a pas été testée sur Jenkins. Nous avons aussi ajouté un test HTTP supplémentaire (`POST /slo/release-check` avec 150 requêtes en échec sur 100 000 pour un SLO de 99,9 % doit retourner `NO-GO`).
+
+### 6.2 Mes deux fonctionnalités bonus
+
+1. **Job de rollback (`Jenkinsfile.rollback`)**
+   - *Problème résolu* : si une version déployée est mauvaise, il faut revenir rapidement à une version connue comme saine, sans rebuild ni modification du code. Le job prend en paramètre `ROLLBACK_TO` (numéro de version uniquement, par exemple `1.0.8`). Le stage `Check the image` fait un `docker pull` : si le tag n'existe pas, le job échoue **avant** de toucher à la production. Le stage `Rollback production` demande une confirmation (`input`, bouton **Rollback**), remplace `ebc-prod` par cette image sur le port `8082` et vérifie `/health`.
+   - *Pourquoi un fichier séparé* : c'est un job à la demande, avec son propre paramètre, qui ne construit rien. Le laisser hors du `Jenkinsfile` principal évite d'ajouter de la logique de production à chaque build normal.
+2. **Déclenchement automatique (`pollSCM`)**
+   - *Problème résolu* : sans déclencheur, un build n'a lieu que si quelqu'un clique sur *Build*. `triggers { pollSCM('H/5 * * * *') }` fait interroger GitHub par Jenkins environ toutes les 5 minutes et lance un build dès qu'un nouveau commit est détecté.
+
+### 6.3 Quatre problèmes rencontrés et leur solution
+
+**Problème 1 : Git Bash modifiait les chemins Linux dans les commandes `docker`**
+- **Cause** : Git Bash (MSYS) convertit automatiquement les arguments qui ressemblent à des chemins Unix en chemins Windows. Un chemin Linux destiné au conteneur (par exemple un volume `-v /var/run/docker.sock:/var/run/docker.sock`) était donc réécrit avant d'arriver à Docker.
+- **Solution** : préfixer la commande par `MSYS_NO_PATHCONV=1` (par exemple `MSYS_NO_PATHCONV=1 docker run ...`) pour désactiver cette conversion.
+
+**Problème 2 : Conflits de ports 8080 / 8081 / 8082**
+- **Cause** : d'anciens conteneurs occupaient déjà les ports, et le conteneur Jenkins lui-même entrait en conflit avec les ports de l'application (staging `8081`, production `8082`). De plus, Jenkins gardait en mémoire l'ancienne adresse, si bien que le lien du build dans l'e-mail pointait vers `localhost:8081` (le staging) au lieu de Jenkins.
+- **Solution** : nous avons libéré les ports (suppression des anciens conteneurs) et remappé Jenkins sur le port `8080`. L'adresse Jenkins a été corrigée dans *Manage Jenkins > System > Jenkins URL* (`http://localhost:8080/`). Les stages de déploiement exécutent aussi `docker rm -f` sur leur conteneur avant de le recréer.
+
+**Problème 3 : `docker push` refusé avec `insufficient scopes`**
+- **Cause** : mon compte Docker Hub n'avait pas les droits d'écriture sur le dépôt `ghassenellili123/error-budget-calculator`, et un token en lecture seule ne permet pas de pousser.
+- **Solution** : Ghassen m'a ajouté comme **collaborateur** du dépôt Docker Hub, et j'ai créé mon propre token **Read & Write**, enregistré dans les Jenkins Credentials sous l'identifiant `dockerhub-token`. Le `Jenkinsfile` ne contient que cet identifiant, jamais le secret.
+
+**Problème 4 : l'image Jenkins officielle ne contenait pas Python**
+- **Cause** : les stages `Build` et `Tests` appellent `python3` et `pip`, absents de l'image Jenkins standard : le build échouait dès le premier stage.
+- **Solution** : construire une image Jenkins personnalisée (`jenkins-python`) qui ajoute Python, et lancer notre conteneur Jenkins avec cette image.
+
+### 6.4 Preuves d'exécution
+
+#### A. Staging et production actifs (`docker ps`)
+![docker ps : ebc-staging sur 8081 et ebc-prod sur 8082](screenshots/04-docker-ps-staging-production.png)
+
+#### B. Application répondant sur staging (8081) et production (8082)
+![Application sur staging et production](screenshots/05-app-staging-and-production.png)
+
+#### C. E-mail de succès reçu dans Mailpit
+![E-mail Mailpit](screenshots/06-mailpit-email.png)
+
+#### D. Job de rollback
+![Rollback : Stage View](screenshots/07-rollback-stageview.png)
+
+![Rollback : Console Output](screenshots/07-rollback-console.png)
+
+### 6.5 Ce qui a été vérifié et ce qui ne l'a pas été
+
+- **Vérifié sur Jenkins** : le déploiement staging et production (avec approbation), l'e-mail de succès (staging et production), le message de nettoyage `cleanWs()` dans la console, le test HTTP supplémentaire et le job de rollback.
+- **Configuré mais non testé en conditions réelles** : les e-mails d'**échec** et d'**instabilité** (log joint) et les branches **Windows** (`bat` / `powershell`) de nos stages.
