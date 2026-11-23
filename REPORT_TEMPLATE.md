@@ -144,6 +144,9 @@ Chaque stage contient une branche Linux (`sh`) et une branche Windows (`bat` / `
 
 ![Rollback : Console Output](screenshots/07-rollback-console.png)
 
+#### E. Pull Requests de la partie CD, relues et fusionnées par Ghassen
+![Pull Requests fusionnées](screenshots/08-pull-requests.png)
+
 ### 6.5 Ce qui a été vérifié et ce qui ne l'a pas été
 
 - **Vérifié sur Jenkins** : le déploiement staging et production (avec approbation), l'e-mail de succès (staging et production), l'e-mail d'**échec** (build n°12, avec le log `build.log` en pièce jointe), le message de nettoyage `cleanWs()` dans la console, le test HTTP supplémentaire et le job de rollback.
